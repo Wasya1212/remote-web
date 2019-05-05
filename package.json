@@ -1,0 +1,22 @@
+{
+  "name": "remote-desktop-web",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@koa/cors": "^3.0.0",
+    "bcrypt": "^3.0.6",
+    "koa": "^2.7.0",
+    "koa-bodyparser": "^4.2.1",
+    "koa-handle-error": "0.0.5",
+    "koa-router": "^7.4.0",
+    "koa-static": "^5.0.0",
+    "mongoose": "^5.5.5",
+    "validator": "^10.11.0"
+  }
+}
