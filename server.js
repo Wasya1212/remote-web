@@ -7,6 +7,8 @@ const Koa = require('koa');
 const Router = require('koa-router');
 const serve = require('koa-static');
 const bodyParser = require('koa-bodyparser');
+const koaBody = require('koa-body');
+const multer = require('koa-multer');
 const cors = require('@koa/cors');
 
 const mongoose = require('mongoose');
@@ -19,6 +21,11 @@ mongoose
   .catch(err => console.error(err));
 
 const User = mongoose.model('User', {
+  username: {
+    type: String,
+    trim: true,
+    required: true
+  },
   email: {
     type: String,
     unique: true,
@@ -43,6 +50,7 @@ const User = mongoose.model('User', {
 });
 
 const createUser = newUser => {
+  console.log(newUser)
   return new Promise((resolve, reject) => {
     if (newUser.password.length < 6) {
       reject(new Error("Password must be 6 or more characters!"));
@@ -61,6 +69,8 @@ const app = new Koa();
 const router = new Router();
 
 const PORT = process.env.PORT || 5000;
+
+let activeUsers = {};
 
 router.get('/', async (ctx, next) => {
   ctx.type = 'html';
@@ -84,25 +94,12 @@ router.post('/login', async (ctx, next) => {
   }
 
   await next();
-  // await User.findOne({ email: ctx.request.body.email }, (err, user) => {
-  //   if (!user) {
-  //     return;
-  //   }
-  //
-  //   bcrypt.compare(ctx.request.body.password, user.password, function(err, isMatch) {
-  //     if (isMatch) {
-  //       ctx.body = user;
-  //     } else {
-  //       ctx.body = { };
-  //     }
-  //
-  //     next();
-  //   });
-  // });
 });
 
-router.post('/sign-in', async (ctx, next) => {
+router.post('/sign-up', async (ctx, next) => {
+  console.log(ctx.request.body)
   const user = new User({
+    username: ctx.request.body.username,
     email: ctx.request.body.email,
     password: ctx.request.body.password
   });
@@ -116,8 +113,43 @@ router.post('/sign-in', async (ctx, next) => {
   await next();
 });
 
-router.post('/pass', async (ctx, next) => {
-  ctx.body = { cost: data };
+router.post('/activate', async (ctx, next) => {
+  console.log("USER", ctx.request.body);
+  try {
+    const accessKey = Math.floor(Math.random() * (99999 - 10000) + 10000);
+
+    activeUsers[ctx.request.body.email] = {
+      ip: ctx.request.body.ip,
+      activateTime: Date.now(),
+      accessKey
+    };
+    ctx.body = { accessKey };
+
+    console.log(activeUsers);
+  } catch (e) {
+    console.error(e);
+  }
+
+  await next();
+});
+
+router.post('/disactivate', async (ctx, next) => {
+  try {
+    delete activeUsers[ctx.request.body.email];
+    ctx.body = { status: 'success' };
+  } catch (e) {
+    console.error(e);
+  }
+
+  await next();
+});
+
+router.post('/get-access', async (ctx, next) => {
+  if (activeUsers[ctx.request.body.email].accessKey == ctx.request.body.accessKey) {
+    ctx.body = { ip: activeUsers[ctx.request.body.email].ip };
+  } else {
+    ctx.throw(403, "Access denided! Wrong access key!");
+  }
 
   await next();
 });
@@ -145,7 +177,15 @@ app.on('error', (err, ctx) => {
 
 app.use(cors());
 app.use(serve(path.resolve(__dirname, 'public')));
-app.use(bodyParser());
+// app.use(bodyParser({
+//   extendTypes: {
+//     json: ['application/x-javascript'] // will parse application/x-javascript type body as a JSON string
+//   }
+// }));
+app.use(koaBody({
+   multipart: true,
+   urlencoded: true
+}));
 app.use(router.routes());
 
 app.listen(PORT, () => {
